@@ -119,17 +119,46 @@ train_x <- as.matrix(trainData %>% select(-cond))
 train_y <- trainData$cond
 test_x <- as.matrix(testData %>% select(-cond))
 test_y <- testData$cond
+
+# create xgb.DMatrix objects for train & test datasets
+train_dmatrix <- xgb.DMatrix(trainData,label = trainData$cond)
+test_dmatrix <- xgb.DMatrix(testData,label = testData$cond)
 ```
 
-#### Hyperparameter tuning
+#### Hyperparameter tuning (caret)
 
 ```{r hyperparameter tuning}
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  allowParallel = TRUE,
+  summaryFunction = function(data, lev = NULL, model = NULL) {
+    c(RMSE = RMSE(data$pred, data$obs))
+  }
+)
 
+set.seed(123)
+
+# set up a parallel backend
+library(parallel)
+library(doParallel)
+
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+
+xgb_caret <- train(
+  x = train_x,
+  y = train_y,
+  method = "xgbTree",
+  trControl = ctrl,
+  metric = "RMSE",
+  tuneLength = 10,
+  preProcess = "medianImpute",
+  verbose = FALSE
+)
 ```
 
 #### Train the model & make predictions
-
-Note, this is the naive version - will need to do hyperparameter tuning in the final version.
 
 ```{r xgboost}
 # train the model
