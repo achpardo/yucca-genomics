@@ -1,7 +1,7 @@
 ---
 title: "Test of XGBoost Regression: Predicting Physiology from Gene Expression"
 author: "Anna Pardo"
-date: "2026-01-29"
+date: "Jan. 29, 2026"
 output: html_document
 ---
 
@@ -9,22 +9,149 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+### Brief Project Summary
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Photosynthesis is central to plant carbon acquisition, but the typical pathway ("C3") is inhibited by abiotic stresses such as water limitation due to the dual function of stomata in carbon intake and transpiration. Crassulacean acid metabolism (CAM) is a form of photosynthesis in which stomata are opened mostly at night, when temperature is reduced, thus reducing transpiration and increasing the plant’s water use efficiency. CAM exists across a spectrum in many lineages, including in the genus *Yucca*; some species, such as *Y. filamentosa*, are strictly C3, whereas others, such as *Y. aloifolia*, use mainly the CAM pathway, and others use CAM only under certain conditions (“facultative CAM” or “C3+CAM”). One such species is *Y. gloriosa*, a homoploid hybrid of CAM *Y. aloifolia* and C3 *Y. filamentosa*, which exhibits intraspecific variation in the degree of facultative CAM under drought. The combination of homoploidy and unique CAM biology makes *Y. gloriosa* an excellent system for the study of both CAM evolution and homoploid speciation. To this end, a 24-hour timecourse RNA-seq dataset was collected for a controlled drought experiment run on both parent species and 26 naturally occurring genotypes of Y. gloriosa. These data are being leveraged to understand both the expression variability arising from homoploid hybridization and that underlying intraspecific CAM variation in this species.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+### Purpose of This Analysis
 
-```{r cars}
-summary(cars)
+This document contains code & results of a test XGBoost machine learning analysis to predict drought photosynthetic physiology data (carbon assimilation or `photo` and stomatal conductance or `cond`) from gene expression data in *Y. gloriosa*. The ultimate goal of this analysis is to use feature importance output from the model to find important genes for the facultative CAM phenotype in *Y. gloriosa*.
+
+```{r load packages}
+library(dplyr)
+library(readr)
+library(xgboost)
+library(caret)
 ```
 
-## Including Plots
+#### Load data
 
-You can also embed plots, for example:
+Both the X (TPM for all genes in *Y. gloriosa*) and the Y (`photo` or `cond` data paired with RNA-seq data) are contained in the same file:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r load data}
+tpmphys <- as.data.frame(read_delim("//wsl.localhost/Ubuntu/home/leviathan22/yucca-genomics/machine_learning/paired_TPM_physiology.txt",delim = "\t"))
+str(tpmphys)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+#### Data subsetting
+
+Since facultative CAM status is determined most by physiology under stress (in this case, drought `D`), data are filtered to keep only drought samples. Additionally, for this test model I will predict stomatal conductance, so I will drop the carbon assimilation column.
+
+```{r filter to drought only}
+dsamp <- tpmphys %>% filter(treat=="D") %>% select(-photo)
+```
+
+#### Log-transform TPM values
+
+```{r logTPM}
+tpmonly <- dsamp %>% select(-c(sample_name,genotype,treat,ZT,cond))
+# for this non-HPC test: drop some columns/genes (try predicting on only the first 500 instead of the ~86,000 total that exist)
+tpmonly <- tpmonly[,1:500]
+# log-transform the subset data
+logtpm <- tpmonly %>% mutate_all(~ log2(.+1))
+# reattach the metadata columns
+md <- dsamp %>% select(c(sample_name,genotype,treat,ZT,cond))
+logtpm <- cbind(md,logtpm)
+```
+
+#### Metadata setup
+Rather than doing random train/test split, I want to use certain genotypes as the training data and others as test data. This will avoid data leakage.
+
+```{r metadata}
+# plot: how many samples are present for each genotype?
+sampcount <- md %>% count(genotype) %>% arrange(desc(n))
+
+ggplot(sampcount,aes(x=genotype,y=n))+geom_col()+theme_bw()
+```
+Conclusion: We should remove genotypes 37, 43, and 48, which have only one sample each.
+
+```{r drop genotypes}
+logtpm <- logtpm %>% filter(!genotype %in% c("37","43","48"))
+md <- md %>% filter(!genotype %in% c("37","43","48"))
+```
+
+What percentage of the remaining data does each genotype represent?
+
+```{r genotype percentages}
+sampcount <- sampcount %>% filter(!genotype %in% c("37","43","48"))
+sampcount <- sampcount %>% ungroup() %>% mutate(percent = n / sum(n) * 100)
+
+ggplot(sampcount,aes(x=genotype,y=percent))+geom_col()+theme_bw()
+```
+
+#### Split training & test data
+
+I would like to preserve a roughly 80:20 train:test split, although my genotypes don't match that exactly. I will set up a function to pull random genotypes until the test data represent 15-25% of the total data.
+
+```{r train test split function}
+genotype_split_selection <- function(pctdf,minval=15,maxval=25){
+  p=0
+  gtselec <- c()
+  while(p<minval) {
+    gt <- sample(pctdf$genotype,size=1)
+    pct <- pctdf %>% filter(genotype == gt) %>% pull(percent)
+    p <- p + pct
+    if(p<maxval){
+      gtselec <- append(gtselec,gt)
+      pctdf <- pctdf %>% filter(genotype != gt)
+    } else {
+      p <- p - pct
+    }
+  }
+  print(paste("Test percentage:",as.character(p)))
+  return(gtselec)
+}
+```
+
+```{r train test split}
+# select genotypes for test data
+testgts <- genotype_split_selection(sampcount)
+
+# set sample ID as index
+rownames(logtpm) <- logtpm$sample_name
+
+# split train & test data by genotype
+trainData <- logtpm %>% filter(!genotype %in% testgts) %>% select(-c(sample_name,genotype,treat,ZT))
+testData <- logtpm %>% filter(genotype %in% testgts) %>% select(-c(sample_name,genotype,treat,ZT))
+
+# Separate the features and target variable
+train_x <- as.matrix(trainData %>% select(-cond))
+train_y <- trainData$cond
+test_x <- as.matrix(testData %>% select(-cond))
+test_y <- testData$cond
+```
+
+#### Hyperparameter tuning
+
+```{r hyperparameter tuning}
+
+```
+
+#### Train the model & make predictions
+
+Note, this is the naive version - will need to do hyperparameter tuning in the final version.
+
+```{r xgboost}
+# train the model
+xgb_model <- xgboost(x = train_x, 
+                     y = train_y, 
+                     nrounds = 100, 
+                     objective = "reg:squarederror")
+
+# predict the values for the test set
+preds <- predict(xgb_model, test_x)
+
+# calculate RMSE
+rmse <- sqrt(mean((preds - test_y)^2))
+print(paste("RMSE:", rmse))
+```
+#### Plot actual vs. predicted values to evaluate the model
+```{r plot values}
+# combine preds & test_y into a dataframe
+all_y <- as.data.frame(preds)
+all_y$actual <- test_y
+ggplot(all_y,aes(x=preds,y=actual))+geom_point() + theme_bw()
+
+```
+
+This plot shows that the predictions are not very good. What is the R-squared value?
