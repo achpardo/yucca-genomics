@@ -30,7 +30,6 @@ Both the X (TPM for all genes in *Y. gloriosa*) and the Y (`photo` or `cond` dat
 
 ```{r load data}
 tpmphys <- as.data.frame(read_delim("//wsl.localhost/Ubuntu/home/leviathan22/yucca-genomics/machine_learning/paired_TPM_physiology.txt",delim = "\t"))
-str(tpmphys)
 ```
 
 #### Data subsetting
@@ -45,10 +44,15 @@ dsamp <- tpmphys %>% filter(treat=="D") %>% select(-photo)
 
 ```{r logTPM}
 tpmonly <- dsamp %>% select(-c(sample_name,genotype,treat,ZT,cond))
-# for this non-HPC test: drop some columns/genes (try predicting on only the first 500 instead of the ~86,000 total that exist)
-tpmonly <- tpmonly[,1:500]
+
+# identify & remove near-zero-variance genes
+nzv <- nearZeroVar(tpmonly)
+tpmonly <- tpmonly[,-nzv]
+
+# for this non-HPC test: drop some columns/genes (try predicting on only the first 100 instead of the ~86,000 total that exist)
+tpmsub <- tpmonly[,1:100]
 # log-transform the subset data
-logtpm <- tpmonly %>% mutate_all(~ log2(.+1))
+logtpm <- tpmsub %>% mutate_all(~ log2(.+1))
 # reattach the metadata columns
 md <- dsamp %>% select(c(sample_name,genotype,treat,ZT,cond))
 logtpm <- cbind(md,logtpm)
@@ -119,46 +123,31 @@ train_x <- as.matrix(trainData %>% select(-cond))
 train_y <- trainData$cond
 test_x <- as.matrix(testData %>% select(-cond))
 test_y <- testData$cond
-
-# create xgb.DMatrix objects for train & test datasets
-train_dmatrix <- xgb.DMatrix(trainData,label = trainData$cond)
-test_dmatrix <- xgb.DMatrix(testData,label = testData$cond)
 ```
 
-#### Hyperparameter tuning (caret)
+#### Hyperparameter tuning (in progress)
 
-```{r hyperparameter tuning}
-ctrl <- trainControl(
-  method = "cv",
-  number = 5,
-  allowParallel = TRUE,
-  summaryFunction = function(data, lev = NULL, model = NULL) {
-    c(RMSE = RMSE(data$pred, data$obs))
-  }
+```{r hyperparameter tuning: random grid search}
+# make a DMatrix object
+dtrain <- xgb.DMatrix(
+  data = as.matrix(train_x),
+  label = train_y
 )
 
 set.seed(123)
 
-# set up a parallel backend
-library(parallel)
-library(doParallel)
-
-cl <- makeCluster(detectCores())
-registerDoParallel(cl)
-
-xgb_caret <- train(
-  x = train_x,
-  y = train_y,
-  method = "xgbTree",
-  trControl = ctrl,
-  metric = "RMSE",
-  tuneLength = 10,
-  preProcess = "medianImpute",
-  verbose = FALSE
+# set up random grid
+random_grid <- data.frame(
+  max_depth = sample(3:10, 30, replace = TRUE),
+  min_child_weight = sample(1:8,30,replace = TRUE),
+  eta = runif(30, 0.01, 0.3),
+  subsample = runif(30, 0.6, 1),
+  colsample_bytree = runif(30, 0.6, 1)
 )
-```
 
-#### Train the model & make predictions
+results <- vector("list", nrow(random_grid))
+```
+#### Train the model & make predictions (naive test - without hyperparameter tuning)
 
 ```{r xgboost}
 # train the model
@@ -182,5 +171,3 @@ all_y$actual <- test_y
 ggplot(all_y,aes(x=preds,y=actual))+geom_point() + theme_bw()
 
 ```
-
-This plot shows that the predictions are not very good. What is the R-squared value?
