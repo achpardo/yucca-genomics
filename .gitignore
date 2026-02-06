@@ -3,3 +3,8 @@ machine_learning/.ipynb_checkpoints/*
 *.csv
 *.html
 *.tex
+*.json
+*.png
+*.pdf
+*.svg
+differential_expression/.ipynb_checkpoints/*
