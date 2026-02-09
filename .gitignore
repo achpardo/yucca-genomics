@@ -9,3 +9,5 @@ machine_learning/.ipynb_checkpoints/*
 *.svg
 differential_expression/.ipynb_checkpoints/*
 *.bed
+*.Identifier
+*/.ipynb_checkpoints/*
