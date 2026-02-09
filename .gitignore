@@ -8,3 +8,4 @@ machine_learning/.ipynb_checkpoints/*
 *.pdf
 *.svg
 differential_expression/.ipynb_checkpoints/*
+*.bed
