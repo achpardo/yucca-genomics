@@ -112,3 +112,6 @@ hybexp_se <- SummarizedExperiment(
 )
 
 # save the SummarizedExperiment as an rds file
+saveRDS(hybexp_se,"//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/summExp_forhybridExpress.rds")
+
+######## Run HybridExpress: get DEGs #####
