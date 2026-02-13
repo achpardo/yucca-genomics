@@ -11,3 +11,4 @@ differential_expression/.ipynb_checkpoints/*
 *.bed
 *.Identifier
 */.ipynb_checkpoints/*
+*.rds
