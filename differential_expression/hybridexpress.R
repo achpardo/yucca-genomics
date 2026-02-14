@@ -7,6 +7,8 @@ library(DESeq2)
 library(readr)
 library(dplyr)
 library(SummarizedExperiment)
+library(ggplot2)
+library(rjson)
 
 setwd("//wsl$/Ubuntu/home/leviathan22/Yucca_genomics/rna_insilico_genome/")
 
@@ -84,22 +86,23 @@ allcounts <- allcounts %>% select(-syntelogID)
 yacounts$genotype <- yacounts$species
 yfcounts$genotype <- yfcounts$species
 yamd <- yacounts %>% select(c(sample_name,genotype,time,treat,ZT,species))
-yamd$generation <- "P1"
-yamd$ploidy <- "diploid"
+yamd$Generation <- "P1"
+yamd$Ploidy <- "diploid"
 yfmd <- yfcounts %>% select(c(sample_name,genotype,time,treat,ZT,species))
-yfmd$generation <- "P2"
-yfmd$ploidy <- "diploid"
+yfmd$Generation <- "P2"
+yfmd$Ploidy <- "diploid"
 
 ygcmd <- as.data.frame(read_delim("./counts/Yg_toYgIS_all_correctedmd_countsmatrix.txt",delim = "\t"))
 ygmd <- ygcmd %>% select(c(sample_name,genotype,time,treat,ZT,species))
-ygmd$generation <- "F1"
-ygmd$ploidy <- "homoploid"
+ygmd$Generation <- "F1"
+ygmd$Ploidy <- "homoploid"
 
 # stick all the metadata together
 allmd <- bind_rows(yamd,yfmd,ygmd)
 
 # subset allmd to only the samples in allcounts
 allmd <- allmd %>% filter(sample_name %in% colnames(allcounts))
+allmd <- allmd %>% filter(sample_name %in% colnames(assay(hybexp_se)))
 
 # set sample_name as row names
 rownames(allmd) <- allmd$sample_name
@@ -111,7 +114,115 @@ hybexp_se <- SummarizedExperiment(
   colData = allmd[match(colnames(allcounts),rownames(allmd)),]
 )
 
+hybexp_se2 <- SummarizedExperiment(
+  assays = as.matrix(assay(hybexp_se)[1]),
+  colData = allmd[match(colnames(assay(hybexp_se)),rownames(allmd)),]
+)
+
 # save the SummarizedExperiment as an rds file
-saveRDS(hybexp_se,"//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/summExp_forhybridExpress.rds")
+saveRDS(hybexp_se2,"//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/summExp_forhybridExpress.rds")
 
 ######## Run HybridExpress: get DEGs #####
+# add midparent values
+hese <- add_midparent_expression(hybexp_se2)
+assay(hese) <- as.matrix(assay(hese))
+hese <- add_size_factors(hese)
+
+# do some exploratory plotting with HybridExpress
+# For colData rows with missing values (midparent samples), add "midparent"
+hese$Ploidy[is.na(hese$Ploidy)] <- "midparent"
+hese$Generation[is.na(hese$Generation)] <- "midparent"
+hese$genotype[is.na(hese$genotype)] <- "midparent"
+hese$treat[is.na(hese$treat)] <- "midparent"
+hese$ZT[is.na(hese$ZT)] <- "midparent"
+
+# custom color palette from https://stackoverflow.com/questions/9563711/r-color-palettes-for-many-data-classes
+c25 <- c(
+  "dodgerblue2", "#E31A1C", # red
+  "green4",
+  "#6A3D9A", # purple
+  "#FF7F00", # orange
+  "black", "gold1",
+  "skyblue2", "#FB9A99", # lt pink
+  "palegreen2",
+  "#CAB2D6", # lt purple
+  "#FDBF6F", # lt orange
+  "gray70", "khaki2",
+  "maroon", "orchid1", "deeppink1", "blue1", "steelblue4",
+  "darkturquoise", "green1", "yellow4", "yellow3",
+  "darkorange4", "brown"
+)
+
+pca_plot(hese, color_by = "Generation", shape_by = "Ploidy", add_mean = TRUE)
+pca_plot(hese, ntop=10000, color_by = "genotype", shape_by = "Generation", add_mean = TRUE,
+         palette = c25) +
+  theme(legend.key.size = unit(0.5, 'cm'), #change legend key size
+        legend.key.height = unit(0.5, 'cm'), #change legend key height
+        legend.key.width = unit(0.5, 'cm'), #change legend key width
+        legend.title = element_text(size=14), #change legend title font size
+        legend.text = element_text(size=10))
+
+pca_plot(hese, ntop=10000, color_by = "genotype", shape_by = "treat", add_mean = TRUE,
+         palette = c25) +
+  theme(legend.key.size = unit(0.5, 'cm'), #change legend key size
+        legend.key.height = unit(0.5, 'cm'), #change legend key height
+        legend.key.width = unit(0.5, 'cm'), #change legend key width
+        legend.title = element_text(size=14), #change legend title font size
+        legend.text = element_text(size=10))
+
+pca_plot(hese, ntop=10000, color_by = "ZT", shape_by = "Generation", add_mean = TRUE,
+         palette = c25) +
+  theme(legend.key.size = unit(0.5, 'cm'), #change legend key size
+        legend.key.height = unit(0.5, 'cm'), #change legend key height
+        legend.key.width = unit(0.5, 'cm'), #change legend key width
+        legend.title = element_text(size=14), #change legend title font size
+        legend.text = element_text(size=10))
+
+# get DEGs: first (most basic) by generation, without additional metadata
+de_bygen <- get_deg_list(hese,alpha = 0.05)
+
+# run by genotype only
+## get vector of offspring genotypes
+sp <- c("aloifolia","filamentosa","midparent")
+hybgt <- unique(hese$genotype)
+hybgt <- hybgt[!hybgt %in% sp]
+de_bygen_gt <- get_deg_list(hese,coldata_column = "genotype",parent1 = "aloifolia",
+                            parent2 = "filamentosa",offspring = hybgt,
+                            midparent = "midparent",alpha = 0.05)
+
+# I don't think that did what I wanted it to...let's save both of these objects anyway:
+saveRDS(de_bygen,"//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/hybexp_degenes_bygenerationonly.rds")
+saveRDS(de_bygen,"//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/hybexp_degenes_bygeneration_gtcol_allgts.rds")
+
+# set up a function to run this for each genotype individually
+degs_genotype <- function(gt){
+  # subset the summarizedexperiment object
+  gcd <- as.data.frame(hese@colData) %>% filter(genotype %in% c(gt,"aloifolia","filamentosa","midparent"))
+  print(head(gcd))
+  samps <- rownames(gcd)
+  gtassay <- assay(hese)[,samps]
+  
+  gse <- SummarizedExperiment(assays = gtassay,colData = gcd)
+  
+  deg_list <- get_deg_list(gse,alpha = 0.05)
+  return(deg_list)
+}
+
+# loop through genotypes & get all lists
+gtdegs <- list()
+for(i in 1:length(hybgt)){
+  gtdegs[[i]] <- degs_genotype(hybgt[i])
+  names(gtdegs)[[i]] <- hybgt[i]
+}
+
+# save to an RDS just in case of session loss
+saveRDS(gtdegs,"//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/hybexp_degenes_eachgt_bygen.rds")
+
+# get DEG summaries for each genotype
+gtsums <- list()
+for(i in 1:length(gtdegs)){
+  gtsums[[i]] <- get_deg_counts(gtdegs[[i]])
+  names(gtsums)[[i]] <- names(gtdegs)[[i]]
+}
+
+# save as JSON
