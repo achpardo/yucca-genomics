@@ -12,3 +12,4 @@ differential_expression/.ipynb_checkpoints/*
 *.Identifier
 */.ipynb_checkpoints/*
 *.rds
+differential_expression/expression_partitioning_downstream/.ipynb_checkpoints/*
