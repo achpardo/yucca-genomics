@@ -226,3 +226,96 @@ for(i in 1:length(gtdegs)){
 }
 
 # save as JSON
+write(toJSON(gtsums),"//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/hybexp_degs_bygt_summaries.json")
+
+######## HybridExpress: DEG classification #####
+
+# run this for each genotype
+gtpartitions <- list()
+for(i in 1:length(gtdegs)){
+  gtpartitions[[i]] <- expression_partitioning(gtdegs[[i]])
+  names(gtpartitions)[[i]] <- names(gtdegs)[[i]]
+}
+
+# partition information: add genotype & bind rows to make one dataframe; then save this object
+for(i in 1:length(gtpartitions)){
+  gtpartitions[[i]]$genotype_Yg <- names(gtpartitions)[[i]]
+}
+allpart <- as.data.frame(bind_rows(gtpartitions))
+write_delim(allpart,file = "//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/hybexp_partitions_bygt.txt",delim = "\t")
+
+plot_expression_partitions(gtpartitions$`18`)
+
+######## Repeat for genotype x treatment ######
+## get vector of offspring genotypes
+sp <- c("aloifolia","filamentosa","midparent")
+hybgt <- unique(hese$genotype)
+hybgt <- hybgt[!hybgt %in% sp]
+
+# set up a function to run for a given genotype & treatment
+degs_treatgt <- function(gt,treatment){
+  # subset the summarizedexperiment object
+  gcd <- as.data.frame(hese@colData) %>% filter(genotype %in% c(gt,"aloifolia","filamentosa","midparent")) %>% 
+    filter(treat %in% c(treatment,"midparent"))
+  #print(head(gcd))
+  if("P1" %in% gcd$Generation & "P2" %in% gcd$Generation & "F1" %in% gcd$Generation){
+    samps <- rownames(gcd)
+    gtassay <- assay(hese)[,samps]
+    
+    gse <- SummarizedExperiment(assays = gtassay,colData = gcd)
+    
+    deg_list <- get_deg_list(gse,alpha = 0.05)
+    return(deg_list)
+  } else {
+    return("not all generation levels present")
+  }
+}
+
+dgtdegs <- list()
+wgtdegs <- list()
+for(i in 5:length(hybgt)){
+  dgtdegs[[i]] <- degs_treatgt(hybgt[i],"D")
+  names(dgtdegs)[[i]] <- paste0(hybgt[i],"_D")
+  
+  wgtdegs[[i]] <- degs_treatgt(hybgt[i],"W")
+  names(wgtdegs)[[i]] <- paste0(hybgt[i],"_W")
+}
+
+# check which genotypes didn't work for drought
+remove <- c()
+for(i in 1:length(dgtdegs)){
+  if(is.character(dgtdegs[[i]])){
+    print(names(dgtdegs)[[i]])
+    remove <- append(remove,names(dgtdegs)[[i]])
+  }
+  if(is.character(wgtdegs[[i]])){
+    print(names(wgtdegs)[[i]])
+    remove <- append(remove,names(wgtdegs)[[i]])
+  }
+}
+
+# make a better list object
+alldegs <- append(dgtdegs,wgtdegs)
+alldegs <- alldegs[names(alldegs) %in% remove == FALSE]
+
+# create summary information
+allsums <- list()
+for(i in 1:length(alldegs)){
+  allsums[[i]] <- get_deg_counts(alldegs[[i]])
+  allsums[[i]]$genotype_treat <- names(alldegs)[[i]]
+  names(allsums)[[i]] <- names(alldegs)[[i]]
+}
+str(allsums$`18_D`)
+
+allsum <- bind_rows(allsums)
+head(allsum)
+write_delim(allsum,file = "//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/summary_hybexpdegs_bygttreat.txt",delim = "\t")
+
+# do expression partitioning for each DEG set
+allparts <- list()
+for(i in 1:length(alldegs)){
+  allparts[[i]] <- expression_partitioning(alldegs[[i]])
+  allparts[[i]]$genotype_treat <- names(alldegs)[[i]]
+}
+apdf <- bind_rows(allparts)
+write_delim(apdf,file = "//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/expression_partitioning_downstream/hybexp_partitiongenes_bygttreat.txt",delim = "\t")
