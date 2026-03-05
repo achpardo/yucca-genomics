@@ -15,3 +15,4 @@ differential_expression/.ipynb_checkpoints/*
 differential_expression/expression_partitioning_downstream/.ipynb_checkpoints/*
 *.bed*
 *.genome
+codedev_homer_to_meme.ipynb
