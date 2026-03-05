@@ -17,3 +17,5 @@ differential_expression/expression_partitioning_downstream/.ipynb_checkpoints/*
 *.genome
 codedev_homer_to_meme.ipynb
 ./.ipynb_checkpoints/*
+.ipynb_checkpoints/
+*.motif
