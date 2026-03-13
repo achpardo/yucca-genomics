@@ -153,3 +153,4 @@ for(i in 1:length(alldegs)){
   allparts[[i]]$genotype_treat <- names(alldegs)[[i]]
 }
 apdf <- bind_rows(allparts)
+write_delim(apdf,file = "//wsl$/Ubuntu/home/leviathan22/yucca-genomics/differential_expression/expression_partitioning_downstream/hybexp_top30pct_partitiongenes_bygttreat.txt",delim = "\t")
