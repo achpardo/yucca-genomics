@@ -22,3 +22,4 @@ codedev_homer_to_meme.ipynb
 fimo_all_out/
 *.pptx
 *.xlsx
+*/*.Rhistory
