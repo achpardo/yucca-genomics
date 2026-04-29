@@ -30,3 +30,4 @@ fimo_all_out/
 */*.RData
 masigpro/inputdata_3reps/
 masigpro/C3+CAM_newsets_inputdata_maSigPro/
+differential_expression/expression_partitioning_downstream/.Rhistory
