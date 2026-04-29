@@ -23,3 +23,10 @@ fimo_all_out/
 *.pptx
 *.xlsx
 */*.Rhistory
+*.blocks
+*.tsv
+*/*.tsv
+*.RData
+*/*.RData
+masigpro/inputdata_3reps/
+masigpro/C3+CAM_newsets_inputdata_maSigPro/
