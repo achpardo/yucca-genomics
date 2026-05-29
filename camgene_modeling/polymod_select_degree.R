@@ -80,3 +80,4 @@ for (i in unique(allres$GeneID)) {
   df <- df %>% arrange(FDR_p)
   print(paste0("Model with lowest p for ",i," : ",df$Model[1]))
 }
+
