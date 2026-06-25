@@ -25,7 +25,7 @@ flower <- inat %>% filter(Flowering=="Yes")
 mod <- aov(month_num ~ Species*Latitude, data = flower)
 summary(mod)
 # Latitude is not significant; drop and re-run as a one-way ANOVA
-
+oneway <- aov(month_num ~ Species, data = flower)
 
 # run post-hoc test
-TukeyHSD(mod)
+TukeyHSD(oneway)
