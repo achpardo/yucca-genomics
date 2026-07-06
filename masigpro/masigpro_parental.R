@@ -80,16 +80,16 @@ mspmd <- md %>% select(c(Time,Replicate,Watered,Drought))
 design <- make.design.matrix(mspmd,degree = 5)
 # degree = (number of unique time points) - 1
 
-fit <- p.vector(normcounts, design, Q = 0.05, MT.adjust = "BH")
+fit <- p.vector(normcounts, design, Q = 0.05, MT.adjust = "BH",counts = TRUE,epsilon = 0.05)
 
 # find & remove influential genes
-tfit<-T.fit(data=fit)
+tfit<-T.fit(data=fit,epsilon = 0.05)
 influential<-tfit$influ.info
 inf.genenames<-colnames(influential)
 nc2<-normcounts[!rownames(normcounts) %in% inf.genenames, ]
 
 # re-run p.vector()
-fit2 <- p.vector(nc2,design,Q=0.05,MT.adjust="BH")
+fit2 <- p.vector(nc2,design,Q=0.05,MT.adjust="BH",epsilon = 0.05,counts = TRUE)
 
 # pick k for k-means clustering (I think it will be 7 but let's verify...)
 wss<-(nrow(fit2$SELEC)-1)*sum(apply(fit2$SELEC,2,var))
@@ -120,7 +120,12 @@ saveclust(pk5kmeans,"../masigpro_results/Ya_kmeans_k5_clusters.txt")
 saveclust(phck5,"../masigpro_results/Ya_hclust_k5_clusters.txt")
 saveclust(phck7,"../masigpro_results/Ya_hclust_k7_clusters.txt")
 
-saveclust(phck6,"../masigpro_results/Ya_hclust_k6_clusters.txt")
+saveclust(phck6,"../masigpro_results/Ya_hclust_k6_clusters_01-Jul-2026.txt")
+
+# reload: how many TS genes total?
+clustJuly <- as.data.frame(read_delim("../masigpro_results/Ya_hclust_k6_clusters_01-Jul-2026.txt",
+                                      delim = "\t"))
+
 
 ############## Y. filamentosa #########
 # load data

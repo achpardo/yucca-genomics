@@ -85,14 +85,14 @@ metadata_setup <- function(counts){
 
 # function to run maSigPro
 run_masigpro <- function(normcounts,design){
-  fit <- p.vector(normcounts, design, Q = 0.05, MT.adjust = "BH")
+  fit <- p.vector(normcounts, design, Q = 0.05, MT.adjust = "BH",counts = TRUE,epsilon = 0.05)
   # find & remove influential genes
-  tfit<-T.fit(data=fit)
+  tfit<-T.fit(data=fit,epsilon = 0.05)
   influential<-tfit$influ.info
   inf.genenames<-colnames(influential)
   nc2<-normcounts[!rownames(normcounts) %in% inf.genenames, ]
   # re-run p.vector()
-  fit2 <- p.vector(nc2,design,Q=0.05,MT.adjust="BH")
+  fit2 <- p.vector(nc2,design,Q=0.05,MT.adjust="BH",counts = TRUE,epsilon = 0.05)
   return(fit2)
 }
 
@@ -127,7 +127,7 @@ pfcct <- as.data.frame(read_delim("./Yg_possible_fac_CAM_counts_withmd_3reps_ran
 fcct <- as.data.frame(read_delim("./Yg_facultative_CAM_counts_withmd_3reps_random.txt",delim = "\t"))
 
 yfclust <- run_all(yfct)
-write.table(yfclust,file = "../Yf_3reps_masigpro_clusters.txt",sep = "\t",col.names = T,row.names = F)
+write.table(yfclust,file = "../Yf_3reps_masigpro_clusters_Jul02.txt",sep = "\t",col.names = T,row.names = F)
 
 c3clust <- run_all(c3ct)
 write.table(c3clust,file = "../Yg_C3_3reps_masigpro_clusters.txt",sep = "\t",col.names = T,row.names = F)
