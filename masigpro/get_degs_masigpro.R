@@ -78,16 +78,16 @@ metadata_setup <- function(counts){
 
 # function to run maSigPro
 run_masigpro <- function(normcounts,design){
-  fit <- p.vector(normcounts, design, Q = 0.05, MT.adjust = "BH")
+  fit <- p.vector(normcounts, design, Q = 0.05, MT.adjust = "BH",counts = TRUE,epsilon = 0.05)
   # find & remove influential genes
-  tfit<-T.fit(data=fit)
+  tfit<-T.fit(data=fit,epsilon = 0.05)
   influential<-tfit$influ.info
   inf.genenames<-colnames(influential)
   nc2<-normcounts[!rownames(normcounts) %in% inf.genenames, ]
   # re-run p.vector()
-  fit2 <- p.vector(nc2,design,Q=0.05,MT.adjust="BH")
+  fit2 <- p.vector(nc2,design,Q=0.05,MT.adjust="BH",counts = TRUE,epsilon = 0.05)
   # and re-run T.fit()
-  NBt <- T.fit(fit2)
+  NBt <- T.fit(fit2,epsilon = 0.05)
   return(NBt)
 }
 
@@ -99,29 +99,32 @@ run_all_de <- function(counts){
   return(sigswd)
 }
 
+setwd("//wsl$/Ubuntu/home/leviathan22/yucca-genomics/masigpro/DEGs_results_Jul06/")
 degs13 <- run_all_de(ct13)
 WDgenes<-degs13$sig.genes$DroughtvsWatered$sig.profiles
-write.table(file="../DE_results/degs_C3+CAM_13.txt", WDgenes)
-WDgenesR2<-degs13$sig.genes$droughtvswater$sig.pvalues$`R-squared`
-write.table(file="../DE_results/degs_C3+CAM_13_R2.txt", WDgenesR2)
-WDgenespval<-degs13$sig.genes$droughtvswater$sig.pvalues$`p-value`
-write.table(file="../DE_results/degs_C3+CAM_13_pval.txt", WDgenespval)
+write.table(file="../DE_results/Jul06_degs_C3+CAM_13.txt", WDgenes)
+WDgenesR2<-degs13$sig.genes$DroughtvsWatered$sig.pvalues$`R-squared`
+write.table(file="../DE_results/Jul06_degs_C3+CAM_13_R2.txt", WDgenesR2)
+WDgenespval<-degs13$sig.genes$DroughtvsWatered$sig.pvalues$`p-value`
+write.table(file="../DE_results/Jul06_degs_C3+CAM_13_pval.txt", WDgenespval)
+rm(degs13,WDgenes,WDgenesR2,WDgenespval)
 
 degs12 <- run_all_de(ct12)
 WDgenes<-degs12$sig.genes$DroughtvsWatered$sig.profiles
-write.table(file="../DE_results/degs_C3+CAM_12.txt", WDgenes)
-WDgenesR2<-degs12$sig.genes$droughtvswater$sig.pvalues$`R-squared`
-write.table(file="../DE_results/degs_C3+CAM_12_R2.txt", WDgenesR2)
-WDgenespval<-degs12$sig.genes$droughtvswater$sig.pvalues$`p-value`
-write.table(file="../DE_results/degs_C3+CAM_12_pval.txt", WDgenespval)
+write.table(file="./Jul06_degs_C3+CAM_12.txt", WDgenes)
+WDgenesR2<-degs12$sig.genes$DroughtvsWatered$sig.pvalues$`R-squared`
+write.table(file="./Jul06_degs_C3+CAM_12_R2.txt", WDgenesR2)
+WDgenespval<-degs12$sig.genes$DroughtvsWatered$sig.pvalues$`p-value`
+write.table(file="./Jul06_degs_C3+CAM_12_pval.txt", WDgenespval)
+rm(degs12,WDgenes,WDgenesR2,WDgenespval)
 
 degs11 <- run_all_de(ct11)
 WDgenes<-degs11$sig.genes$DroughtvsWatered$sig.profiles
-write.table(file="../DE_results/degs_C3+CAM_11.txt", WDgenes)
-WDgenesR2<-degs11$sig.genes$droughtvswater$sig.pvalues$`R-squared`
-write.table(file="../DE_results/degs_C3+CAM_11_R2.txt", WDgenesR2)
-WDgenespval<-degs11$sig.genes$droughtvswater$sig.pvalues$`p-value`
-write.table(file="../DE_results/degs_C3+CAM_11_pval.txt", WDgenespval)
+write.table(file="../DE_results/Jul06_degs_C3+CAM_11.txt", WDgenes)
+WDgenesR2<-degs11$sig.genes$DroughtvsWatered$sig.pvalues$`R-squared`
+write.table(file="../DE_results/Jul06_degs_C3+CAM_11_R2.txt", WDgenesR2)
+WDgenespval<-degs11$sig.genes$DroughtvsWatered$sig.pvalues$`p-value`
+write.table(file="../DE_results/Jul06_degs_C3+CAM_11_pval.txt", WDgenespval)
 
 # repeat for parental species
 ## load parental counts
@@ -134,15 +137,15 @@ setwd("//wsl$/Ubuntu/home/leviathan22/yucca-genomics/masigpro/C3+CAM_newsets_inp
 degsyf <- run_all_de(yfcounts)
 WDgenes<-degsyf$sig.genes$DroughtvsWatered$sig.profiles
 write.table(file="../DE_results/degs_Yf.txt", WDgenes)
-WDgenesR2<-degsyf$sig.genes$droughtvswater$sig.pvalues$`R-squared`
+WDgenesR2<-degsyf$sig.genes$DroughtvsWatered$sig.pvalues$`R-squared`
 write.table(file="../DE_results/degs_Yf_R2.txt", WDgenesR2)
-WDgenespval<-degsyf$sig.genes$droughtvswater$sig.pvalues$`p-value`
+WDgenespval<-degsyf$sig.genes$DroughtvsWatered$sig.pvalues$`p-value`
 write.table(file="../DE_results/degs_Yf_pval.txt", WDgenespval)
 
 degsya <- run_all_de(yacounts)
 WDgenes<-degsya$sig.genes$DroughtvsWatered$sig.profiles
 write.table(file="../DE_results/degs_Ya.txt", WDgenes)
-WDgenesR2<-degsya$sig.genes$droughtvswater$sig.pvalues$`R-squared`
+WDgenesR2<-degsya$sig.genes$DroughtvsWatered$sig.pvalues$`R-squared`
 write.table(file="../DE_results/degs_Ya_R2.txt", WDgenesR2)
-WDgenespval<-degsya$sig.genes$droughtvswater$sig.pvalues$`p-value`
+WDgenespval<-degsya$sig.genes$DroughtvsWatered$sig.pvalues$`p-value`
 write.table(file="../DE_results/degs_Ya_pval.txt", WDgenespval)
