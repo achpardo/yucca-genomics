@@ -5,11 +5,12 @@ Photosynthesis is central to plant carbon acquisition, but the typical C3 pathwa
 	The combination of homoploidy and unique CAM biology makes *Y. gloriosa* an excellent system for the study of both CAM evolution and homoploid speciation. To this end, a 24-hour timecourse RNA-seq dataset was collected for a controlled drought experiment run on both parent species and 26 naturally occurring genotypes of Y. gloriosa. These data are being leveraged to understand both the expression variability arising from homoploid hybridization and that underlying intraspecific CAM variation in this species.
 
 #### Subdirectories:
-- `camgene_modeling`: Contains scripts related to polynomial modeling of CAM gene expression over time.
 - `data_wrangling`: Contains various notebooks/scripts for general data wrangling.
 - `differential_expression`: Contains scripts for DESeq2 (both general & for homeolog expression bias analysis).
 - `machine_learning`: Contains scripts & notebooks relevant to XGBoost machine learning modeling.
 - `masigpro`: Contains scripts for running maSigPro (time-ordered gene coexpression).
 - `pca`: Contains notebooks used to create expression principal component analysis (PCA) plots.
 - `physiology`: Contains notebooks/code relevant to making calculations on physiology data (see [Karolina Heyduk's GitHub repo](https://github.com/kheyduk/Yucca_physiology))
+- `phenology`: Contains scripts/notebooks related to mapping phenology (flowering time) to determine possible reproductive isolation among parental and hybrid species.
+- `polynomial_modeling`: Contains scripts related to polynomial modeling of gene expression over time.
 - `rnaseq_processing`: Contains scripts relevant to RNA-seq data processing (i.e. creating TPM & counts matrices).
