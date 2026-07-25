@@ -37,3 +37,6 @@ masigpro/masigpro_Yg_singlereps.R
 cb_2018_us_state_500k/
 KH_to_JGI_genotype_names_physiotypes.ipynb
 make_SRA_sampfile.ipynb
+polynomial_modeling/old_scripts/
+polymod_TSGs_results.ipynb
+plot_profiles_for_KH.ipynb
