@@ -23,16 +23,16 @@ tpm <- tpm %>% filter(phys != "NULL")
 # scale TPM before running models
 stpm <- as.data.frame(tpm)
 row.names(stpm) <- stpm$sample_name
-stpm <- stpm %>% select(-c(sample_name,genotype,time,treat,ZT,species,phys))
+stpm <- stpm %>% dplyr::select(-c(sample_name,genotype,time,treat,ZT,species,phys))
 stpm <- scale(stpm)
 stpm <- as.data.frame(stpm)
 # add back metadata
 stpm$sample_name <- row.names(stpm)
-md <- as.data.frame(tpm %>% select(c("sample_name","genotype","phys","treat","ZT")))
+md <- as.data.frame(tpm %>% dplyr::select(c("sample_name","genotype","phys","treat","ZT")))
 stpm_md <- merge(md,stpm)
 # drop columns with all NA values
 stpm_md <- stpm_md %>% 
-  select(
+  dplyr::select(
     where(
       ~sum(!is.na(.x)) > 0
     )
